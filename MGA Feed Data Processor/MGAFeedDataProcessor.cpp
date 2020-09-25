@@ -36,6 +36,7 @@ double standardPeakRatioMean = 0.0;
 double standardStev = 0.0;
 double standardRSD = 0.0;
 bool calculateRecovery = false;
+double standardConc = 1.0;
 
 
 struct injection {
@@ -127,7 +128,7 @@ void split(const string& s, char delim, map<string, injection>& results) {
 }
 
 void mannually_enter_weights(map<string, injection>& results) {
-	for (auto result : results) {
+	for (auto &result : results) {
 		if (result.second.sampleType.find("Unknown") != string::npos) {
 			cout << endl << "Please enter sample weight in grams:" << endl <<
 				"sample: " << result.first << endl;
@@ -141,7 +142,7 @@ void mannually_enter_weights(map<string, injection>& results) {
 }
 
 void manually_enter_dilutions(map<string, injection>& results) {
-	for (auto result : results) {
+	for (auto &result : results) {
 		if (result.second.sampleType.find("Unknown") != string::npos) {
 			cout << endl << "Please enter dilution factor for sample "
 				<< result.first << endl;
@@ -157,7 +158,7 @@ void manually_enter_dilutions(map<string, injection>& results) {
 
 void calculate_calibration_curve(map<string, injection>&results) {
 	double standardPeakRatioSum = 0.0;
-	for (auto result : results) {
+	for (auto &result : results) {
 		if (result.second.sampleType.find("tandard") != string::npos) {
 			standardPeakRatioSum += result.second.peakRatio;
 		}
@@ -173,6 +174,17 @@ void calculate_calibration_curve(map<string, injection>&results) {
 	standardStev /= (standardInjectionsCount-1);
 	standardStev = sqrt(standardStev);
 	standardRSD = standardStev / standardPeakRatioMean;
+}
+
+void calculate_assay(map<string, injection>& results) {
+	for (auto& result : results) {
+		if (result.second.sampleType.find("Unknown") != string::npos) {
+			result.second.assay = (result.second.peakRatio / standardPeakRatioMean) * standardConc * (result.second.dilution / result.second.weight);
+			if (calculateRecovery == true) {
+				result.second.recovery = result.second.assay / expectedPotency;
+			}	
+		}
+	}
 }
 
 
@@ -271,7 +283,6 @@ int main(int argc, char* argv[]) {
 
 
 	cout << "Please enter standard concentration in ppb" << endl;
-	double standardConc = 1.0;
 	while (!(cin >> standardConc)) {
 		cerr << "Invalid input. Try again: ";
 		cin.clear();
@@ -294,9 +305,15 @@ int main(int argc, char* argv[]) {
 				cin.ignore(numeric_limits<streamsize> ::max(), '\n');
 			}
 		}
-	} while (tolower(selection) != 'y' || tolower(selection)!= 'n');
+	} while (tolower(selection) != 'y' && tolower(selection)!= 'n');
 	
+	calculate_assay(results);
 
+	for (auto result : results) {
+		//result.second.peakRatio = result.second.melengestrolArea / result.second.megestrolArea;
+		cout << result.first << " " << result.second.sampleType << " " << result.second.megestrolArea << " " << result.second.melengestrolArea << " " <<
+			result.second.peakRatio << " "<< result.second.assay<<" " << 100* result.second.recovery<< "%"<< endl;
+	}
 
 	return(EXIT_SUCCESS);
 	
