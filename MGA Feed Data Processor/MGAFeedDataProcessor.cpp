@@ -1,0 +1,286 @@
+/*! \file: MGAFeedAssayProcessor.cpp
+\author Zitong Wang
+\date 2020-09-19
+\version 1.0.0
+\note: Developed for automating MGA Feed Assay result processing
+\compiled with std:c++17
+\This program takes in the exported standard and unknown results from Empower, sets up calibration curve and calculate assay results/recoveries.
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <locale>
+#include <filesystem>
+#include <map>
+#include <iterator>
+#include <regex>
+#include <iomanip>
+#include <sstream>
+#include <math.h>
+using namespace std;
+using namespace std::filesystem;
+
+const string VERSION = "1.0.0";
+int sampleTypeIndex = -1;
+int sampleNameIndex = -1;
+int peakNameIndex = -1;
+int RTIndex = -1;
+int areaIndex = -1;
+int weightIndex = -1;
+int dilutionIndex = -1;
+double expectedPotency = 2000.0;
+size_t standardInjectionsCount = 0;
+double standardPeakRatioMean = 0.0;
+double standardStev = 0.0;
+double standardRSD = 0.0;
+
+
+struct injection {
+	string sampleType;
+	double melengestrolArea = 0;
+	double megestrolArea = 0;
+	double peakRatio = 0.0;
+	double dilution = 1.0;
+	double weight = 1.0;
+};
+
+void split(const string& s, char delim, map<string, injection>& results) {
+	stringstream ss;
+	ss.str(s);
+	string item;
+	injection injectionData;  
+	string sampleName;
+	vector<std::string> elems;
+	int indexCount = -1;
+	bool isDataRow = false;
+	while (getline(ss, item, delim)) {
+		elems.push_back(item);
+		indexCount++;
+
+		if (item.find("Sample Type") != string::npos) {
+			sampleTypeIndex = indexCount;
+		}
+		else if (item.find("Name") != string::npos && item.find("SampleName") == string::npos) {
+			peakNameIndex = indexCount;
+		}
+		else if (item.find("RT") != string::npos) {
+			RTIndex = indexCount;
+		}
+		else if (item.find("Area") != string::npos) {
+			areaIndex = indexCount;
+		}
+		else if (item.find("SampleName") != string::npos) {
+			sampleNameIndex = indexCount;
+		}
+		else if (item.find("Weight") != string::npos) {
+			weightIndex = indexCount;
+		}
+		else if (item.find("Dilution") != string::npos) {
+			dilutionIndex = indexCount;
+		}
+		else {
+			isDataRow = true;
+		}
+
+		if (item.find("Peak Results") != string::npos) {
+			isDataRow = false;
+		}
+	}
+	if (isDataRow) {
+		sampleName = elems.at(sampleNameIndex);
+		auto loc = results.find(sampleName);
+		if (loc == results.end()) {
+			injectionData.sampleType = elems.at(sampleTypeIndex);
+			if (injectionData.sampleType.find("tandard") != string::npos) {
+				standardInjectionsCount++;
+			}
+			if (weightIndex != -1) {
+				injectionData.weight = stod(elems.at(weightIndex), nullptr);
+			}
+			if (dilutionIndex != -1) {
+				injectionData.dilution = stod(elems.at(dilutionIndex), nullptr);
+			}
+			if (elems.at(peakNameIndex).find("Melengestrol") != string::npos) {
+				injectionData.melengestrolArea = stod(elems.at(areaIndex), nullptr);
+			}
+			else if (elems.at(peakNameIndex).find("Megestrol") != string::npos) {
+				injectionData.megestrolArea = stod(elems.at(areaIndex), nullptr);
+			}
+			results.insert(pair<string, injection>(sampleName, injectionData));
+		}
+		else {
+			if (elems.at(peakNameIndex).find("Melengestrol") != string::npos) {
+				(*loc).second.melengestrolArea = stod(elems.at(areaIndex), nullptr);
+			}
+			else if (elems.at(peakNameIndex).find("Megestrol") != string::npos) {
+				(*loc).second.megestrolArea = stod(elems.at(areaIndex), nullptr);
+			}
+		}
+
+	}
+
+}
+
+void mannually_enter_weights(map<string, injection>& results) {
+	for (auto result : results) {
+		if (result.second.sampleType.find("Unknown") != string::npos) {
+			cout << endl << "Please enter sample weight in grams:" << endl <<
+				"sample: " << result.first << endl;
+			while (!(cin >> result.second.weight)) {
+				cerr << "Invalid input. Try again: ";
+				cin.clear();
+				cin.ignore(numeric_limits<streamsize>::max(), '\n');
+			}
+		}
+	}
+}
+
+void manually_enter_dilutions(map<string, injection>& results) {
+	for (auto result : results) {
+		if (result.second.sampleType.find("Unknown") != string::npos) {
+			cout << endl << "Please enter dilution factor for sample "
+				<< result.first << endl;
+			while (!(cin >> result.second.dilution)) {
+				cerr << "Invalid input. Try again: ";
+				cin.clear();
+				cin.ignore(numeric_limits<streamsize> ::max(), '\n');
+			}
+
+		}
+	}
+}
+
+void calculate_calibration_curve(map<string, injection>&results) {
+	double standardPeakRatioSum = 0.0;
+	for (auto result : results) {
+		if (result.second.sampleType.find("tandard") != string::npos) {
+			standardPeakRatioSum += result.second.peakRatio;
+		}
+	}
+
+	standardPeakRatioMean = standardPeakRatioSum / standardInjectionsCount;
+
+	for (auto result : results) {
+		if (result.second.sampleType.find("tandard") != string::npos) {
+			standardStev += pow((result.second.peakRatio - standardPeakRatioMean),2);
+		}
+	}
+	standardStev /= (standardInjectionsCount-1);
+	standardStev = sqrt(standardStev);
+	standardRSD = standardStev / standardPeakRatioMean;
+}
+
+
+
+int main(int argc, char* argv[]) {
+	cout << " MGAFeedAssayProcessor (c) 2020, Eric Wang" << endl
+		<< "==============================================================" << endl
+		<< "Version " << VERSION << endl;
+
+	if (argc == 1) {
+		cout << "Error: no data file entered; exiting..." << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	map<string, injection> results;
+	string inputFile = argv[1];
+	ifstream infile(inputFile);
+	if (!infile) {
+		cout << "Error: program <" << inputFile << "> doesn't exist" << endl;
+		exit(EXIT_FAILURE);
+	}
+	string line;
+	
+	while (getline(infile, line, '\r')) {
+		split(line, '\t', results);
+	}
+	cout << "Data parsing complete..." << endl;
+
+	for (auto &result : results) {
+		result.second.peakRatio =  result.second.melengestrolArea / result.second.megestrolArea;
+	}
+	cout << "Peak ratio calculation complete..." << endl;
+
+	cout << "Previewing Data..." << endl;
+	for (auto result : results) {
+		//result.second.peakRatio = result.second.melengestrolArea / result.second.megestrolArea;
+		cout << result.first << " " << result.second.sampleType << " " << result.second.megestrolArea << " " << result.second.melengestrolArea << " " <<
+			result.second.peakRatio << endl;
+	}
+
+	if (standardInjectionsCount == 0) {
+		cerr << "Missing standard Injection! Please re-export data files including standard injections";
+		return(EXIT_FAILURE);
+	}
+	else {
+		calculate_calibration_curve(results);
+		cout << endl << "Calibration curve constructed..." << endl
+			<< "Number of standard injections included: " << standardInjectionsCount << endl
+			<< "Mean Peak Ratio: " << standardPeakRatioMean << endl
+			<< "Standard Deviation: " << standardStev << endl
+			<< "RSD: " << standardRSD * 100 << "%" << endl;
+	}
+
+
+	
+	if (weightIndex == -1) {
+		cout << endl <<"No weights info detected in exported files. Would you want to: " << endl
+			<< "A. mannually enter them here" << endl
+			<< "B. calculate using a default value of 1.0 g" << endl
+			<< "press any other key to exit" <<endl;
+		char selection;
+		cin >> selection;
+		cout << selection;
+		if (tolower(selection) == 'a') {
+			mannually_enter_weights(results);
+		}
+		else if (tolower(selection) != 'b') {
+			return(EXIT_SUCCESS);
+		}
+	}
+
+	if (dilutionIndex == -1) {
+		cout << endl << "No dilution info detected in exported files. Would you want to: " << endl
+			<< "A. mannually enter them here" << endl  
+			<< "B. calculate using a default value of 1" << endl
+			<< "C. calculate using a customered default value" << endl
+			<< "press any other key to exit" << endl;
+		char selection;
+		size_t defaultDilution = 1;
+		cin >> selection;
+		cout << selection;
+		if (tolower(selection) == 'a') {
+			manually_enter_dilutions(results);
+		}
+		else if (tolower(selection) == 'c') {
+			while (!(cin >> defaultDilution)) {
+				cerr << "Invalid input. Try again: ";
+				cin.clear();
+				cin.ignore(numeric_limits<streamsize> ::max(), '\n');
+			}
+		}
+		else if (tolower(selection) != 'b') {
+			return(EXIT_SUCCESS);
+		}
+	}
+
+
+	cout << "Please enter standard concentration in ppb" << endl;
+	double standardConc = 1.0;
+	while (!(cin >> standardConc)) {
+		cerr << "Invalid input. Try again: ";
+		cin.clear();
+		cin.ignore(numeric_limits<streamsize>::max(), '\n');
+	}
+	cout << standardConc;
+
+
+
+
+
+	return(EXIT_SUCCESS);
+	
+
+}
