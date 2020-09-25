@@ -35,6 +35,7 @@ size_t standardInjectionsCount = 0;
 double standardPeakRatioMean = 0.0;
 double standardStev = 0.0;
 double standardRSD = 0.0;
+bool calculateRecovery = false;
 
 
 struct injection {
@@ -44,6 +45,8 @@ struct injection {
 	double peakRatio = 0.0;
 	double dilution = 1.0;
 	double weight = 1.0;
+	double assay = 0.0;
+	double recovery = 0.0;
 };
 
 void split(const string& s, char delim, map<string, injection>& results) {
@@ -74,7 +77,7 @@ void split(const string& s, char delim, map<string, injection>& results) {
 		else if (item.find("SampleName") != string::npos) {
 			sampleNameIndex = indexCount;
 		}
-		else if (item.find("Weight") != string::npos) {
+		else if (item.find("SampleWeight") != string::npos) {
 			weightIndex = indexCount;
 		}
 		else if (item.find("Dilution") != string::npos) {
@@ -276,8 +279,23 @@ int main(int argc, char* argv[]) {
 	}
 	cout << standardConc;
 
-
-
+	char selection;
+	do {
+		cout << endl << "Would you want to calculate recoveries? " << endl
+			<< "Y. Yes" << endl
+			<< "N. No" << endl;
+		cin >> selection;
+		if (tolower(selection) == 'y') {
+			calculateRecovery = true;
+			cout << endl << "Please enter expected sample potency in ppb " << endl;
+			while (!(cin >> expectedPotency)) {
+				cerr << "Invalid input. Try again: ";
+				cin.clear();
+				cin.ignore(numeric_limits<streamsize> ::max(), '\n');
+			}
+		}
+	} while (tolower(selection) != 'y' || tolower(selection)!= 'n');
+	
 
 
 	return(EXIT_SUCCESS);

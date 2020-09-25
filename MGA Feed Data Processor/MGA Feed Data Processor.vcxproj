@@ -24,6 +24,7 @@
     <ProjectGuid>{c8a7e5ad-596a-44b5-aec7-d46d55ad7c75}</ProjectGuid>
     <RootNamespace>MGAFeedDataProcessor</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>MGAFeedDataProcessor</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
