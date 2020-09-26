@@ -1,7 +1,8 @@
 ﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(467,5): warning MSB8028: The intermediate directory (Release\) contains files shared from another project (MGA Feed Data Processor.vcxproj).  This can lead to incorrect clean and rebuild behavior.
   MGAFeedDataProcessor.cpp
+D:\OneDrive - fanshaweonline.ca\Source\MGA Feed Data Processor\MGA Feed Data Processor\MGAFeedDataProcessor.cpp(221,7): warning C4101: 'buffer': unreferenced local variable
   Generating code
   Previous IPDB not found, fall back to full compilation.
-  All 375 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  All 473 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
   Finished generating code
   MGA Feed Data Processor.vcxproj -> D:\OneDrive - fanshaweonline.ca\Source\MGA Feed Data Processor\Release\MGAFeedDataProcessor.exe
