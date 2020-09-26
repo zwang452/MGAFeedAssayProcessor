@@ -1,3 +1,2 @@
 ﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(467,5): warning MSB8028: The intermediate directory (Debug\) contains files shared from another project (MGA Feed Data Processor.vcxproj).  This can lead to incorrect clean and rebuild behavior.
-  MGAFeedDataProcessor.cpp
   MGA Feed Data Processor.vcxproj -> D:\OneDrive - fanshaweonline.ca\Source\MGA Feed Data Processor\Debug\MGAFeedDataProcessor.exe
