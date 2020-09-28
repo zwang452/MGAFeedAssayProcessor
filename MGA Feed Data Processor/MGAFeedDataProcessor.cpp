@@ -336,10 +336,9 @@ void export_to_xml(map<string, injection>& results, string& inputFile) {
 					sheet->writeNum(row, col++, result.second.weight);
 					sheet->writeNum(row, col++, result.second.dilution);
 					sheet->writeNum(row, col++, result.second.assay);
-					firstAssay = result.second.assay;
+					
 					if (calculateRecovery) {
 						sheet->writeNum(row, col++, result.second.recovery, percentage);
-						firstRecovery = result.second.recovery;
 					}
 
 					if (averageMode == true && isSecondInjection) {
@@ -352,6 +351,8 @@ void export_to_xml(map<string, injection>& results, string& inputFile) {
 					}
 					else {
 						isSecondInjection = true;
+						firstAssay = result.second.assay;
+						firstRecovery = result.second.recovery;
 					}
 					row++;
 					col = 0;
