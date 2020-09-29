@@ -29,6 +29,7 @@ using namespace libxl;
 
 
 const string VERSION = "1.0.1";
+//Declaring variables; indices of -1 indicates field absent from the input data
 int sampleTypeIndex = -1;
 int sampleNameIndex = -1;
 int peakNameIndex = -1;
@@ -45,7 +46,7 @@ bool calculateRecovery = false;
 double standardConc = 1.0;
 bool averageMode = false;
 
-
+//Struct containing states of an injection; will be used as the value in the map with injection name being the key
 struct injection {
 	string sampleType;
 	double melengestrolArea = 0;
@@ -77,20 +78,25 @@ void help() {
 		<< "https://github.com/zwang452/MGAFeedAssayProcessor" << endl;
 }
 
-
+// Function that seperate each value in a line using delimeter and stores them in a map
 void split(const string& s, char delim, map<string, injection>& results) {
 	stringstream ss;
 	ss.str(s);
 	string item;
 	injection injectionData;  
 	string sampleName;
-	vector<std::string> elems;
+	vector<string> elems;
 	int indexCount = -1;
 	bool isDataRow = false;
 	while (getline(ss, item, delim)) {
+
+		//Push each element into a vector for access later
 		elems.push_back(item);
+
+		//Increase the index by 1 each time an element is loaded
 		indexCount++;
 
+		//If a header is matched, set its index
 		if (item.find("Sample Type") != string::npos) {
 			sampleTypeIndex = indexCount;
 		}
@@ -116,14 +122,18 @@ void split(const string& s, char delim, map<string, injection>& results) {
 			isDataRow = true;
 		}
 
+		//Sometimes the first row of data file is "Peak results"; Code below ingores that row
 		if (item.find("Peak Results") != string::npos) {
 			isDataRow = false;
 		}
 	}
+
+	
 	if (isDataRow) {
 		sampleName = elems.at(sampleNameIndex);
 		auto loc = results.find(sampleName);
 		if (loc == results.end()) {
+			//If the current injection is not present to the map, add it to the map as a new key and update its fields
 			injectionData.sampleType = elems.at(sampleTypeIndex);
 			if (injectionData.sampleType.find("tandard") != string::npos) {
 				standardInjectionsCount++;
@@ -142,6 +152,7 @@ void split(const string& s, char delim, map<string, injection>& results) {
 			}
 			results.insert(pair<string, injection>(sampleName, injectionData));
 		}
+		//If the current injection is present to the map, update it 
 		else {
 			if (elems.at(peakNameIndex).find("Melengestrol") != string::npos) {
 				(*loc).second.melengestrolArea = stod(elems.at(areaIndex), nullptr);
@@ -155,6 +166,8 @@ void split(const string& s, char delim, map<string, injection>& results) {
 
 }
 
+
+//Update the sample weights of injections if manual mode is toggled
 void mannually_enter_weights(map<string, injection>& results) {
 	for (auto &result : results) {
 		if (result.second.sampleType.find("Unknown") != string::npos) {
@@ -184,6 +197,8 @@ void manually_enter_dilutions(map<string, injection>& results) {
 	}
 }
 
+
+//Calculates for calibration with injections marked as standard
 void calculate_calibration_curve(map<string, injection>&results) {
 	double standardPeakRatioSum = 0.0;
 	for (auto &result : results) {
@@ -204,6 +219,7 @@ void calculate_calibration_curve(map<string, injection>&results) {
 	standardRSD = standardStev / standardPeakRatioMean;
 }
 
+//Calculate assay results in unit of ppb using the standard calibration curve
 void calculate_assay(map<string, injection>& results) {
 	for (auto& result : results) {
 		if (result.second.sampleType.find("Unknown") != string::npos) {
@@ -215,6 +231,7 @@ void calculate_assay(map<string, injection>& results) {
 	}
 }
 
+//Export data to excel using libxl
 void export_to_xml(map<string, injection>& results, string& inputFile) {
 
 	time_t now = time(0);
@@ -424,6 +441,8 @@ int main(int argc, char* argv[]) {
 			result.second.peakRatio << endl;
 	}
 
+
+	//Calculate for calibration is standard injections are present
 	if (standardInjectionsCount == 0) {
 		cerr << "Missing standard Injection! Please re-export data files including standard injections";
 		return(EXIT_FAILURE);
@@ -438,7 +457,7 @@ int main(int argc, char* argv[]) {
 	}
 
 
-	
+	//Ask for sample weights if they are missing from input data file
 	if (weightIndex == -1) {
 		cout << endl <<"No weights info detected in exported files. Would you want to: " << endl
 			<< "A. mannually enter them here" << endl
@@ -455,6 +474,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	//Ask for sample dilutions if they are missing from input data file
 	if (dilutionIndex == -1) {
 		cout << endl << "No dilution info detected in exported files. Would you want to: " << endl
 			<< "A. mannually enter them here" << endl  
