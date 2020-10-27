@@ -44,8 +44,10 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+	//Data structure that holds injection data from csv
 	map<string, injection> results;
 	
+	//Read injection data line by line
 	ifstream infile(inputFile);
 	if (!infile) {
 		cout << "Error: file <" << inputFile << "> doesn't exist" << endl;
@@ -58,6 +60,7 @@ int main(int argc, char* argv[]) {
 	}
 	cout << "Data parsing complete..." << endl;
 
+	//Previewing peak ratios
 	for (auto &result : results) {
 		result.second.peakRatio =  result.second.melengestrolArea / result.second.megestrolArea;
 	}
@@ -129,7 +132,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-
+	//Asks for pre-determined standard concentration 
 	cout << "Please enter standard concentration in ppb" << endl;
 	while (!(cin >> standardConc)) {
 		cerr << "Invalid input. Try again: ";
@@ -172,14 +175,15 @@ int main(int argc, char* argv[]) {
 		}
 	} while (tolower(selection) != 'y' && tolower(selection) != 'n');
 	
+	//Calculate from calibration curve
 	calculate_assay(results);
 
 	for (auto result : results) {
-		//result.second.peakRatio = result.second.melengestrolArea / result.second.megestrolArea;
 		cout << result.first << " " << result.second.sampleType << " " << result.second.megestrolArea << " " << result.second.melengestrolArea << " " <<
 			result.second.peakRatio << " "<< result.second.assay<<" " << 100* result.second.recovery<< "%"<< endl;
 	}
 	
+	//Export to excel using libxl library
 	export_to_xml(results, inputFile);
 	return(EXIT_SUCCESS);
 }
